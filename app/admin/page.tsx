@@ -8,9 +8,13 @@ interface Envio {
   code?: string;
   guia?: string;
   sender?: string;
+  remitente?: string;
   recipient?: string;
+  destinatario?: string;
   destination?: string;
+  direccion?: string;
   packages?: number;
+  bultos?: number;
   status?: string;
 }
 
@@ -38,7 +42,7 @@ export default function AdminPage() {
         else if (data.shipments) setEnvios(data.shipments);
       }
     } catch (e) {
-      console.error("Error al cargar:", e);
+      console.error("Error al cargar envíos:", e);
     }
   };
 
@@ -52,7 +56,7 @@ export default function AdminPage() {
     setLoading(true);
     setMensaje("");
 
-    const nuevoEnvio = {
+    const nuevoEnvio: Envio = {
       code,
       sender,
       recipient,
@@ -69,7 +73,7 @@ export default function AdminPage() {
       });
 
       if (res.ok) {
-        setMensaje("✅ Envío guardado correctamente");
+        setMensaje("✅ Envío guardado en Neon Postgres");
         setCode(generarGuia());
         setSender("");
         setRecipient("");
@@ -184,14 +188,17 @@ export default function AdminPage() {
                 <tbody className="divide-y divide-slate-800/60 text-sm">
                   {envios.map((item, idx) => {
                     const c = item.code || item.guia || "";
+                    const dest = item.recipient || item.destinatario || "-";
+                    const dir = item.destination || item.direccion || "";
+                    const bult = item.packages || item.bultos || 1;
                     return (
                       <tr key={item.id || idx} className="hover:bg-slate-800/40 transition">
                         <td className="p-3.5 font-mono font-bold text-red-500">{c}</td>
                         <td className="p-3.5">
-                          <span className="font-semibold text-slate-200 block">{item.recipient || item.destinatario}</span>
-                          <span className="text-xs text-slate-500">{item.destination || item.direccion}</span>
+                          <span className="font-semibold text-slate-200 block">{dest}</span>
+                          <span className="text-xs text-slate-500">{dir}</span>
                         </td>
-                        <td className="p-3.5 font-bold text-slate-300">{item.packages || item.bultos || 1}</td>
+                        <td className="p-3.5 font-bold text-slate-300">{bult}</td>
                         <td className="p-3.5">
                           <select
                             value={item.status || "EN_DEPOSITO"}
