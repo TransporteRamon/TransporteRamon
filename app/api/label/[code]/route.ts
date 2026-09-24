@@ -1,0 +1,1 @@
+import{getShipment}from"../../../../lib/db";export async function GET(_:Request,{params}:{params:Promise<{code:string}>}){const{code}=await params;const s=await getShipment(code);if(!s)return new Response("Not found",{status:404});return Response.json({code:s.code,sender:s.sender,recipient:s.recipient,origin:s.origin,destination:s.destination,remito:s.remito,status:s.status})}
