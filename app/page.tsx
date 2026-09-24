@@ -1,0 +1,1 @@
+export default function Home(){return <main><header className="top"><b>TRANSPORTE <span className="red">RAMÓN</span></b></header><section className="hero"><h1>Seguimiento de envíos</h1><p className="muted">Consultá el estado de tu paquete.</p><a className="btn" href="/seguimiento">Consultar envío</a></section></main>}
