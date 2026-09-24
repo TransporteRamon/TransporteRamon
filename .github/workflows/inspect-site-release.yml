@@ -1,6 +1,8 @@
 name: Inspect site release
 
 on:
+  push:
+    branches: [main]
   workflow_dispatch:
 
 jobs:
