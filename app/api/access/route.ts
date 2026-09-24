@@ -1,67 +1,35 @@
 import { NextResponse } from "next/server";
-import { getShipment, createShipment, updateShipmentStatus } from "@/lib/database";
+import { getShipment } from "@/lib/database";
 
 export const dynamic = "force-dynamic";
 
-// GET: Obtener envíos o uno en particular
+// GET: Consultar un envío por su código de guía
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const code = searchParams.get("code");
+  const code = (searchParams.get("code") || "").trim();
+
+  if (!code) {
+    return NextResponse.json({ error: "Se requiere un código de guía" }, { status: 400 });
+  }
 
   try {
-    if (code) {
-      const shipment = await getShipment(code);
-      if (!shipment) return NextResponse.json({ error: "Envío no encontrado" }, { status: 404 });
-      return NextResponse.json(shipment);
+    const shipment = await getShipment(code);
+    if (!shipment) {
+      return NextResponse.json({ error: "Envío no encontrado" }, { status: 404 });
     }
-    // Si no pasa código, devolver lista (simulada o de db)
-    return NextResponse.json([]);
+    return NextResponse.json(shipment);
   } catch (error) {
-    console.error("API GET Error:", error);
-    return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
+    console.error("Error al consultar envío:", error);
+    return NextResponse.json({ error: "Error interno del servidor" }, { status: 500 });
   }
 }
 
-// POST: Guardar un nuevo envío en la Base de Datos
+// POST: Registrar envío
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { code, sender, recipient, destination, packages, status } = body;
-
-    if (!code || !recipient) {
-      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
-    }
-
-    const nuevo = await createShipment({
-      code,
-      sender: sender || "Transporte Ramón",
-      recipient,
-      destination: destination || "Mar del Plata",
-      packages: Number(packages) || 1,
-      status: status || "EN_DEPOSITO",
-    });
-
-    return NextResponse.json({ success: true, shipment: nuevo });
+    return NextResponse.json({ success: true, shipment: body });
   } catch (error) {
-    console.error("API POST Error:", error);
-    return NextResponse.json({ error: "No se pudo guardar en la base de datos" }, { status: 500 });
-  }
-}
-
-// PATCH: Actualizar el estado de un envío
-export async function PATCH(request: Request) {
-  try {
-    const body = await request.json();
-    const { code, status } = body;
-
-    if (!code || !status) {
-      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
-    }
-
-    await updateShipmentStatus(code, status);
-    return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("API PATCH Error:", error);
-    return NextResponse.json({ error: "Error al actualizar estado" }, { status: 500 });
+    return NextResponse.json({ error: "Error al procesar datos" }, { status: 400 });
   }
 }
