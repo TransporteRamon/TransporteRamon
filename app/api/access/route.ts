@@ -1,1 +1,67 @@
-import{setAdmin}from"../../../lib/admin";export async function POST(req:Request){const f=await req.formData();if(f.get("code")!==process.env.ADMIN_KEY)return new Response("Unauthorized",{status:401});await setAdmin();return Response.redirect(new URL("/admin",req.url),303)}
+import { NextResponse } from "next/server";
+import { getShipment, createShipment, updateShipmentStatus } from "@/lib/database";
+
+export const dynamic = "force-dynamic";
+
+// GET: Obtener envíos o uno en particular
+export async function GET(request: Request) {
+  const { searchParams } = new URL(request.url);
+  const code = searchParams.get("code");
+
+  try {
+    if (code) {
+      const shipment = await getShipment(code);
+      if (!shipment) return NextResponse.json({ error: "Envío no encontrado" }, { status: 404 });
+      return NextResponse.json(shipment);
+    }
+    // Si no pasa código, devolver lista (simulada o de db)
+    return NextResponse.json([]);
+  } catch (error) {
+    console.error("API GET Error:", error);
+    return NextResponse.json({ error: "Error de servidor" }, { status: 500 });
+  }
+}
+
+// POST: Guardar un nuevo envío en la Base de Datos
+export async function POST(request: Request) {
+  try {
+    const body = await request.json();
+    const { code, sender, recipient, destination, packages, status } = body;
+
+    if (!code || !recipient) {
+      return NextResponse.json({ error: "Faltan datos requeridos" }, { status: 400 });
+    }
+
+    const nuevo = await createShipment({
+      code,
+      sender: sender || "Transporte Ramón",
+      recipient,
+      destination: destination || "Mar del Plata",
+      packages: Number(packages) || 1,
+      status: status || "EN_DEPOSITO",
+    });
+
+    return NextResponse.json({ success: true, shipment: nuevo });
+  } catch (error) {
+    console.error("API POST Error:", error);
+    return NextResponse.json({ error: "No se pudo guardar en la base de datos" }, { status: 500 });
+  }
+}
+
+// PATCH: Actualizar el estado de un envío
+export async function PATCH(request: Request) {
+  try {
+    const body = await request.json();
+    const { code, status } = body;
+
+    if (!code || !status) {
+      return NextResponse.json({ error: "Faltan datos" }, { status: 400 });
+    }
+
+    await updateShipmentStatus(code, status);
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("API PATCH Error:", error);
+    return NextResponse.json({ error: "Error al actualizar estado" }, { status: 500 });
+  }
+}
