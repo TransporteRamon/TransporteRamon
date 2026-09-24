@@ -1,0 +1,35 @@
+name: Inspect site release
+
+on:
+  workflow_dispatch:
+
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract release
+        run: |
+          tar -xf site-release.tar
+          if [ -f site-release-labels.tar ]; then tar -xf site-release-labels.tar; fi
+      - name: Build
+        run: |
+          corepack enable
+          corepack prepare pnpm@11.25.0 --activate
+          pnpm install --frozen-lockfile
+          pnpm build
+      - name: Upload extracted source
+        uses: actions/upload-artifact@v4
+        with:
+          name: extracted-site-source
+          path: |
+            app/
+            db/
+            lib/
+            public/
+            drizzle/
+            package.json
+            tsconfig.json
+            next.config.ts
+            vite.config.ts
+            drizzle.config.ts
