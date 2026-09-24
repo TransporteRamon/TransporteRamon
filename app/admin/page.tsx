@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 
 interface Envio {
+  id?: number;
   code: string;
   sender: string;
   recipient: string;
@@ -26,14 +27,27 @@ export default function AdminPage() {
 
   const generarGuia = () => `TR-${Math.floor(100000 + Math.random() * 900000)}`;
 
+  const cargarEnvios = async () => {
+    try {
+      const res = await fetch("/api/access");
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setEnvios(data);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     setCode(generarGuia());
+    cargarEnvios();
   }, []);
 
   const handleCrearEnvio = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMensaje("Guardando en Base de Datos...");
+    setMensaje("Guardando en Neon...");
 
     const nuevoEnvio = {
       code,
@@ -52,14 +66,14 @@ export default function AdminPage() {
       });
 
       if (res.ok) {
-        setMensaje("✅ Envío guardado en Neon Postgres!");
-        setEnvios([nuevoEnvio, ...envios]);
+        setMensaje("✅ Envío registrado en la base de datos");
         setCode(generarGuia());
         setSender("");
         setRecipient("");
         setDestination("");
         setPackages(1);
         setStatus("EN_DEPOSITO");
+        await cargarEnvios();
       } else {
         setMensaje("⚠️ Error al guardar en base de datos.");
       }
@@ -77,7 +91,7 @@ export default function AdminPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: shipmentCode, status: nuevoEstado }),
       });
-      setEnvios(envios.map(item => item.code === shipmentCode ? { ...item, status: nuevoEstado } : item));
+      await cargarEnvios();
     } catch (e) {
       console.error(e);
     }
@@ -146,7 +160,7 @@ export default function AdminPage() {
         <div style={{ background: "#1e293b", padding: "24px", borderRadius: "12px", border: "1px solid #334155" }}>
           <h2 style={{ fontSize: "16px", marginTop: 0, marginBottom: "16px", borderBottom: "1px solid #334155", paddingBottom: "8px" }}>Envíos Registrados ({envios.length})</h2>
           {envios.length === 0 ? (
-            <p style={{ color: "#64748b", textAlign: "center", padding: "20px 0", fontSize: "14px" }}>No hay envíos guardados en esta sesión.</p>
+            <p style={{ color: "#64748b", textAlign: "center", padding: "20px 0", fontSize: "14px" }}>No hay envíos registrados en la base de datos.</p>
           ) : (
             <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
               <thead>
