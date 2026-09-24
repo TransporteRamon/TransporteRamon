@@ -1,0 +1,1 @@
+import{setAdmin}from"../../../lib/admin";export async function POST(req:Request){const f=await req.formData();if(f.get("code")!==process.env.ADMIN_KEY)return new Response("Unauthorized",{status:401});await setAdmin();return Response.redirect(new URL("/admin",req.url),303)}
