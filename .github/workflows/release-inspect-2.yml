@@ -1,0 +1,20 @@
+name: Release inspect 2
+on:
+  push:
+    branches: [main]
+jobs:
+  inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract and list
+        run: |
+          tar -xf site-release.tar
+          tar -tf site-release.tar | head -500
+      - name: Upload release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: full-release
+          path: .
+          include-hidden-files: true
+          retention-days: 1
