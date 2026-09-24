@@ -1,0 +1,1 @@
+export default function Access(){return <main className="container"><div className="card"><h1>Acceso</h1><form action="/api/access" method="post"><input className="input" name="code" required/><button className="btn">Ingresar</button></form></div></main>}
