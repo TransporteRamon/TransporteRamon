@@ -10,7 +10,6 @@ interface Envio {
   destination: string;
   packages: number;
   status: string;
-  createdAt?: string;
 }
 
 export default function AdminPage() {
@@ -18,7 +17,6 @@ export default function AdminPage() {
   const [loading, setLoading] = useState(false);
   const [mensaje, setMensaje] = useState("");
 
-  // Formulario
   const [code, setCode] = useState("");
   const [sender, setSender] = useState("");
   const [recipient, setRecipient] = useState("");
@@ -28,217 +26,164 @@ export default function AdminPage() {
 
   const generarGuia = () => `TR-${Math.floor(100000 + Math.random() * 900000)}`;
 
-  // Cargar envíos desde API y LocalStorage
-  const cargarEnvios = async () => {
-    let listaLocal: Envio[] = [];
-    const local = localStorage.getItem("tr_shipments_db");
-    if (local) {
-      try { listaLocal = JSON.parse(local); } catch (e) {}
-    }
-
-    try {
-      const res = await fetch("/api/access");
-      if (res.ok) {
-        const data = await res.json();
-        const apiList = Array.isArray(data) ? data : data.shipments || [];
-        if (apiList.length > 0) {
-          setEnvios(apiList);
-          localStorage.setItem("tr_shipments_db", JSON.stringify(apiList));
-          return;
-        }
-      }
-    } catch (e) {
-      console.error(e);
-    }
-
-    setEnvios(listaLocal);
-  };
-
   useEffect(() => {
     setCode(generarGuia());
-    cargarEnvios();
   }, []);
-
-  const guardarLista = (lista: Envio[]) => {
-    setEnvios(lista);
-    localStorage.setItem("tr_shipments_db", JSON.stringify(lista));
-  };
 
   const handleCrearEnvio = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code || !recipient) return;
     setLoading(true);
+    setMensaje("Guardando en Base de Datos...");
 
-    const nuevoEnvio: Envio = {
+    const nuevoEnvio = {
       code,
       sender: sender || "Transporte Ramón",
       recipient,
       destination: destination || "Mar del Plata",
       packages: Number(packages) || 1,
       status,
-      createdAt: new Date().toISOString(),
     };
 
-    // Intentar guardar en la API / Neon
     try {
-      await fetch("/api/access", {
+      const res = await fetch("/api/access", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(nuevoEnvio),
       });
-    } catch (e) {
-      console.error(e);
+
+      if (res.ok) {
+        setMensaje("✅ Envío guardado en Neon Postgres!");
+        setEnvios([nuevoEnvio, ...envios]);
+        setCode(generarGuia());
+        setSender("");
+        setRecipient("");
+        setDestination("");
+        setPackages(1);
+        setStatus("EN_DEPOSITO");
+      } else {
+        setMensaje("⚠️ Error al guardar en base de datos.");
+      }
+    } catch (error) {
+      setMensaje("❌ Error de conexión.");
+    } finally {
+      setLoading(false);
     }
-
-    // Guardado persistente garantizado
-    const nuevaLista = [nuevoEnvio, ...envios.filter(item => item.code !== code)];
-    guardarLista(nuevaLista);
-
-    setMensaje("✅ Envío guardado exitosamente");
-    setCode(generarGuia());
-    setSender("");
-    setRecipient("");
-    setDestination("");
-    setPackages(1);
-    setStatus("EN_DEPOSITO");
-    setLoading(false);
-
-    setTimeout(() => setMensaje(""), 4000);
   };
 
   const handleCambiarEstado = async (shipmentCode: string, nuevoEstado: string) => {
-    const actualizada = envios.map((item) =>
-      item.code === shipmentCode ? { ...item, status: nuevoEstado } : item
-    );
-    guardarLista(actualizada);
-
     try {
       await fetch("/api/access", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ code: shipmentCode, status: nuevoEstado }),
       });
+      setEnvios(envios.map(item => item.code === shipmentCode ? { ...item, status: nuevoEstado } : item));
     } catch (e) {
       console.error(e);
     }
   };
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-4 sm:p-8">
-      <div className="max-w-6xl mx-auto space-y-8">
+    <div style={{ background: "#0f172a", minHeight: "100vh", color: "#fff", padding: "24px", fontFamily: "sans-serif" }}>
+      <div style={{ maxWidth: "1000px", margin: "0 auto" }}>
         
         {/* Header */}
-        <div className="bg-slate-900 border border-slate-800 p-6 rounded-3xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 shadow-2xl">
-          <div className="flex items-center space-x-3">
-            <div className="bg-red-600 text-white font-black text-2xl px-3.5 py-1 rounded-2xl shadow-lg shadow-red-600/30">
-              TR
-            </div>
-            <div>
-              <h1 className="text-xl font-bold text-white tracking-tight">Panel de Control Operativo</h1>
-              <p className="text-xs text-slate-400">Transporte Ramón - Mar del Plata</p>
-            </div>
+        <div style={{ background: "#1e293b", padding: "20px", borderRadius: "12px", display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px", border: "1px solid #334155" }}>
+          <div>
+            <h1 style={{ margin: 0, fontSize: "22px", color: "#fff" }}>Panel de Control Operativo</h1>
+            <p style={{ margin: "4px 0 0", fontSize: "12px", color: "#94a3b8" }}>Transporte Ramón - Base de Datos Conectada</p>
           </div>
-          <div className="flex items-center gap-3">
-            {mensaje && <span className="text-xs font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1.5 rounded-xl">{mensaje}</span>}
-            <Link href="/" className="text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl border border-slate-700 transition">
-              Ver Sitio Público
-            </Link>
-          </div>
+          <Link href="/" style={{ background: "#334155", color: "#fff", padding: "8px 16px", borderRadius: "8px", textDecoration: "none", fontSize: "12px", fontWeight: "bold" }}>
+            Ver Sitio Público →
+          </Link>
         </div>
 
-        {/* Formulario Alta */}
-        <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl shadow-xl space-y-6">
-          <h2 className="text-lg font-bold text-white border-b border-slate-800 pb-3">Cargar Nuevo Envío</h2>
-          <form onSubmit={handleCrearEnvio} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Formulario */}
+        <div style={{ background: "#1e293b", padding: "24px", borderRadius: "12px", marginBottom: "24px", border: "1px solid #334155" }}>
+          <h2 style={{ fontSize: "16px", marginTop: 0, marginBottom: "16px", borderBottom: "1px solid #334155", paddingBottom: "8px" }}>Cargar Nuevo Envío</h2>
+          
+          {mensaje && <div style={{ background: "#065f46", color: "#a7f3d0", padding: "10px", borderRadius: "8px", fontSize: "13px", fontWeight: "bold", marginBottom: "16px" }}>{mensaje}</div>}
+
+          <form onSubmit={handleCrearEnvio} style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: "16px" }}>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">N° Guía / Código</label>
-              <input type="text" value={code} onChange={(e) => setCode(e.target.value)} required className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-red-500 font-mono font-bold focus:outline-none focus:border-red-500" />
+              <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", fontWeight: "bold", marginBottom: "4px" }}>N° GUÍA / CÓDIGO</label>
+              <input type="text" value={code} onChange={(e) => setCode(e.target.value)} required style={{ width: "100%", padding: "10px", background: "#0f172a", border: "1px solid #334155", color: "#ef4444", borderRadius: "6px", fontWeight: "bold", fontFamily: "monospace" }} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Remitente (Envía)</label>
-              <input type="text" value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Ej: Distribuidora SRL" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500" />
+              <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", fontWeight: "bold", marginBottom: "4px" }}>REMITENTE (ENVÍA)</label>
+              <input type="text" value={sender} onChange={(e) => setSender(e.target.value)} placeholder="Ej: Distribuidora SRL" style={{ width: "100%", padding: "10px", background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: "6px" }} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Destinatario (Recibe)</label>
-              <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} required placeholder="Ej: Juan Pérez" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500" />
+              <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", fontWeight: "bold", marginBottom: "4px" }}>DESTINATARIO (RECIBE)</label>
+              <input type="text" value={recipient} onChange={(e) => setRecipient(e.target.value)} required placeholder="Ej: Juan Pérez" style={{ width: "100%", padding: "10px", background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: "6px" }} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Dirección / Destino</label>
-              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Ej: Av. Libertad 5943, MDQ" className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500" />
+              <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", fontWeight: "bold", marginBottom: "4px" }}>DIRECCIÓN / DESTINO</label>
+              <input type="text" value={destination} onChange={(e) => setDestination(e.target.value)} placeholder="Ej: Av. Libertad 5943" style={{ width: "100%", padding: "10px", background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: "6px" }} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Cantidad de Bultos</label>
-              <input type="number" min="1" value={packages} onChange={(e) => setPackages(Number(e.target.value))} required className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500" />
+              <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", fontWeight: "bold", marginBottom: "4px" }}>BULTOS</label>
+              <input type="number" min="1" value={packages} onChange={(e) => setPackages(Number(e.target.value))} required style={{ width: "100%", padding: "10px", background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: "6px" }} />
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase mb-2">Estado Inicial</label>
-              <select value={status} onChange={(e) => setStatus(e.target.value)} className="w-full bg-slate-950 border border-slate-800 rounded-xl p-3.5 text-white focus:outline-none focus:border-red-500">
+              <label style={{ display: "block", fontSize: "11px", color: "#94a3b8", fontWeight: "bold", marginBottom: "4px" }}>ESTADO INICIAL</label>
+              <select value={status} onChange={(e) => setStatus(e.target.value)} style={{ width: "100%", padding: "10px", background: "#0f172a", border: "1px solid #334155", color: "#fff", borderRadius: "6px" }}>
                 <option value="EN_DEPOSITO">En Depósito</option>
                 <option value="EN_TRANSITO">En Tránsito</option>
                 <option value="EN_REPARTO">En Reparto</option>
                 <option value="ENTREGADO">Entregado</option>
               </select>
             </div>
-            <div className="lg:col-span-3 pt-2">
-              <button type="submit" disabled={loading} className="w-full bg-red-600 hover:bg-red-500 text-white font-bold py-4 rounded-2xl transition shadow-lg shadow-red-600/30">
-                {loading ? "Guardando..." : "💾 Guardar Envío"}
+            <div style={{ gridColumn: "1 / -1", paddingTop: "8px" }}>
+              <button type="submit" disabled={loading} style={{ width: "100%", background: "#dc2626", color: "#fff", padding: "12px", border: "none", borderRadius: "8px", fontWeight: "bold", cursor: "pointer", fontSize: "14px" }}>
+                {loading ? "Guardando..." : "💾 Guardar Envío en Base de Datos"}
               </button>
             </div>
           </form>
         </div>
 
-        {/* Tabla Registros */}
-        <div className="bg-slate-900 border border-slate-800 p-6 sm:p-8 rounded-3xl shadow-xl space-y-6">
-          <h2 className="text-lg font-bold text-white border-b border-slate-800 pb-3">Envíos Registrados ({envios.length})</h2>
+        {/* Tabla */}
+        <div style={{ background: "#1e293b", padding: "24px", borderRadius: "12px", border: "1px solid #334155" }}>
+          <h2 style={{ fontSize: "16px", marginTop: 0, marginBottom: "16px", borderBottom: "1px solid #334155", paddingBottom: "8px" }}>Envíos Registrados ({envios.length})</h2>
           {envios.length === 0 ? (
-            <p className="text-slate-500 text-sm text-center py-8">No hay envíos registrados.</p>
+            <p style={{ color: "#64748b", textAlign: "center", padding: "20px 0", fontSize: "14px" }}>No hay envíos guardados en esta sesión.</p>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-slate-800 text-[11px] font-bold text-slate-500 uppercase tracking-wider bg-slate-950/50">
-                    <th className="p-3.5">Código Guía</th>
-                    <th className="p-3.5">Destinatario / Destino</th>
-                    <th className="p-3.5">Bultos</th>
-                    <th className="p-3.5">Cambiar Estado</th>
-                    <th className="p-3.5 text-center">Acciones</th>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", fontSize: "13px" }}>
+              <thead>
+                <tr style={{ borderBottom: "1px solid #334155", color: "#94a3b8" }}>
+                  <th style={{ padding: "8px" }}>CÓDIGO</th>
+                  <th style={{ padding: "8px" }}>DESTINATARIO</th>
+                  <th style={{ padding: "8px" }}>BULTOS</th>
+                  <th style={{ padding: "8px" }}>ESTADO</th>
+                  <th style={{ padding: "8px" }}>ETIQUETA</th>
+                </tr>
+              </thead>
+              <tbody>
+                {envios.map((item, idx) => (
+                  <tr key={idx} style={{ borderBottom: "1px solid #334155" }}>
+                    <td style={{ padding: "10px 8px", fontFamily: "monospace", fontWeight: "bold", color: "#ef4444" }}>{item.code}</td>
+                    <td style={{ padding: "10px 8px" }}>
+                      <strong>{item.recipient}</strong>
+                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>{item.destination}</div>
+                    </td>
+                    <td style={{ padding: "10px 8px", fontWeight: "bold" }}>{item.packages}</td>
+                    <td style={{ padding: "10px 8px" }}>
+                      <select value={item.status} onChange={(e) => handleCambiarEstado(item.code, e.target.value)} style={{ background: "#0f172a", color: "#fff", border: "1px solid #334155", padding: "4px 8px", borderRadius: "4px" }}>
+                        <option value="EN_DEPOSITO">En Depósito</option>
+                        <option value="EN_TRANSITO">En Tránsito</option>
+                        <option value="EN_REPARTO">En Reparto</option>
+                        <option value="ENTREGADO">Entregado</option>
+                      </select>
+                    </td>
+                    <td style={{ padding: "10px 8px" }}>
+                      <a href={`/api/label/${item.code}?sender=${encodeURIComponent(item.sender)}&recipient=${encodeURIComponent(item.recipient)}&destination=${encodeURIComponent(item.destination)}&packages=${item.packages}`} target="_blank" style={{ background: "#0f172a", color: "#fff", padding: "6px 12px", border: "1px solid #334155", borderRadius: "6px", textDecoration: "none", fontSize: "11px", fontWeight: "bold" }}>
+                        📄 Imprimir PDF
+                      </a>
+                    </td>
                   </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-800/60 text-sm">
-                  {envios.map((item, idx) => (
-                    <tr key={idx} className="hover:bg-slate-800/40 transition">
-                      <td className="p-3.5 font-mono font-bold text-red-500">{item.code}</td>
-                      <td className="p-3.5">
-                        <span className="font-semibold text-slate-200 block">{item.recipient}</span>
-                        <span className="text-xs text-slate-500">{item.destination}</span>
-                      </td>
-                      <td className="p-3.5 font-bold text-slate-300">{item.packages}</td>
-                      <td className="p-3.5">
-                        <select
-                          value={item.status}
-                          onChange={(e) => handleCambiarEstado(item.code, e.target.value)}
-                          className="bg-slate-950 border border-slate-800 rounded-xl p-2 text-xs font-bold text-white focus:outline-none focus:border-red-500"
-                        >
-                          <option value="EN_DEPOSITO">En Depósito</option>
-                          <option value="EN_TRANSITO">En Tránsito</option>
-                          <option value="EN_REPARTO">En Reparto</option>
-                          <option value="ENTREGADO">Entregado</option>
-                        </select>
-                      </td>
-                      <td className="p-3.5 text-center">
-                        <a
-                          href={`/api/label/${item.code}?sender=${encodeURIComponent(item.sender)}&recipient=${encodeURIComponent(item.recipient)}&destination=${encodeURIComponent(item.destination)}&packages=${item.packages}`}
-                          target="_blank"
-                          className="bg-slate-800 hover:bg-slate-700 text-white px-3.5 py-2 rounded-xl text-xs font-bold border border-slate-700 transition inline-flex items-center gap-1"
-                        >
-                          📄 Imprimir Etiqueta
-                        </a>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           )}
         </div>
       </div>
