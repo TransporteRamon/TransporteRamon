@@ -1,0 +1,4 @@
+import {neon} from "@neondatabase/serverless";
+function db(){const url=process.env.DATABASE_URL;if(!url)throw new Error("DATABASE_URL is not configured");return neon(url);}
+export async function getShipment(code:string):Promise<any>{const sql=db();const rows=await sql.query("SELECT * FROM shipments WHERE upper(code)=upper($1) LIMIT 1",[code]);if(!rows[0])return null;const events=await sql.query("SELECT status,note,created_at FROM shipment_events WHERE shipment_id=$1 ORDER BY created_at ASC",[rows[0].id]);return {...rows[0],events};}
+export async function listShipments():Promise<any[]>{return await db().query("SELECT * FROM shipments ORDER BY created_at DESC LIMIT 200",[]);}
