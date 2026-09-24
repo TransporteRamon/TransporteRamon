@@ -1,0 +1,1 @@
+import{redirect}from"next/navigation";import{isAdmin}from"../../lib/admin";export default async function Admin(){if(!(await isAdmin()))redirect("/admin/login");return <main className="container"><div className="card"><h1>Administración</h1><p>Panel de Transporte Ramón.</p></div></main>}
